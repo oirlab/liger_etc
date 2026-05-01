@@ -19,13 +19,15 @@ def ETCPage():
     with col_title:
         st.title("Liger Exposure Time Calculator")
     with col_logos:
-        _cols = st.columns([1, 1, 1])
+        _cols = st.columns([1, 1, 1, 1])
         with _cols[0]:
             st.image("liger_etc/static/oirlab_logo.png", width=100)
         with _cols[1]:
             st.image("liger_etc/static/liger_logo.png", width=100)
         with _cols[2]:
             st.image("liger_etc/static/keck_logo.png", width=100)
+        with _cols[3]:
+            st.image("liger_etc/static/mulab_logo_short.png", width=100)
 
     InstrumentInputs()
     st.divider()
