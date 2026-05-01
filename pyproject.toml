@@ -1,0 +1,63 @@
+# Guide (user-friendly):
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+
+# Specification (technical, formal):
+# https://packaging.python.org/en/latest/specifications/pyproject-toml/
+
+
+# Choosing a build backend:
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend
+[build-system]
+requires = ["setuptools>=38.3.0", "wheel", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_file = "liger_etc/_version.py"
+version_scheme = "post-release"
+
+[project]
+name = "liger_etc"
+dynamic = ["version"]
+description = "Exposure time calculator for Liger."
+readme = "README.md"
+requires-python = ">=3.13"
+
+license = {file = "LICENSE.md"}
+
+authors = [
+  {name = "Bryson Cale", email = "brcale@ucsd.edu" },
+]
+
+maintainers = [
+  {name = "Bryson Cale", email = "brcale@ucsd.edu" },
+]
+
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  # "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [
+  "asdf>=5",
+  "numpy>=2",
+  "astropy>=7.0",
+  "scipy",
+  "numba>=0.65",
+  # "matplotlib",
+  "liger_iris_drp_resources @ git+https://github.com/astrobc1/Liger_IRIS_DRP_Resources",
+  "liger_iris_sim @ git+https://github.com/oirlab/liger_iris_sim",
+  "streamlit>=1.56.0",
+  "plotly>=6.7.0",
+  "photutils",
+  "expecto>=0.1.4",
+]
+
+[project.urls]
+"Source" = "https://github.com/oirlab/liger_etc"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--rootdir=."
