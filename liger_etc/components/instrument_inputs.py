@@ -257,7 +257,7 @@ def InstrumentInputs():
 
         st.markdown(
             f"**Total:** {np.round(tput_tot, decimals=3)}" if tput_tot is not None else "**Total:** N/A",
-            help="Total throughput"
+            help="Total system throughput, not including sky transmission."
         )
 
         def _reset_tput_values():

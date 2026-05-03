@@ -26,7 +26,7 @@ def ApertureInputs():
     if plate_scale is not None and filter_info is not None:
         wavecen = filter_info.get('wavecenter')
         diffrac_lim = get_diffrac_limit(instrument_name, wavecen)
-        st.text("Diffraction limit R = 2λ/D = " + f"{np.round(diffrac_lim, decimals=1)} mas")
+        st.markdown(f"**Diffraction limit (2λ/D)**: {np.round(diffrac_lim, decimals=1)} mas", help="Aperture radius for a perfect airy disk to encircle ~90% of total flux.")
     else:
         diffrac_lim = get_diffrac_limit(instrument_name, 1.5)
         st.text("Diffraction limit R = 2λ/D = N/A (Select instrument and filter)")
@@ -38,12 +38,12 @@ def ApertureInputs():
         value=np.round(diffrac_lim, decimals=1),
         step=0.1,
         key='aperture_rad',
-        help="Aperture radius for photometry (mas)",
+        help="User aperture radius for photometry (mas)",
         placeholder=np.round(diffrac_lim, decimals=1)
     )
 
     num_pix = aperture_rad / (plate_scale * 1E3)
-    st.markdown(f"**$N_{{pix}}$ = {np.round(num_pix, decimals=2)}**")
+    st.markdown(f"**$N_{{pix}}$ = {np.round(num_pix, decimals=2)}**", help="Number of pixels in user aperture")
 
 def _make_sersic_kernel(shape: tuple, re_pix: float, n: float) -> np.ndarray:
     """Normalized 2D Sersic surface brightness profile as a convolution kernel."""

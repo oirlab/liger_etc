@@ -46,7 +46,7 @@ def get_active_psf(instrument_params: dict) -> np.ndarray:
     """
     import streamlit as _st
 
-    psf_option = _st.session_state.get('psf_option', 'Default PSF')
+    psf_option = _st.session_state.get('psf_option', 'default')
 
     name        = instrument_params['instrument_name']
     mode        = instrument_params['_instrument_mode']
@@ -54,7 +54,7 @@ def get_active_psf(instrument_params: dict) -> np.ndarray:
     filter_info = instrument_params['filter_info']
     wcen        = float(filter_info['wavecenter'])
 
-    if psf_option == 'Analytic PSF':
+    if psf_option == 'analytic':
         strehl      = float(_st.session_state.get('psf_strehl', 0.50))
         fried_param = float(_st.session_state.get('psf_fried_param', 40.0))
 

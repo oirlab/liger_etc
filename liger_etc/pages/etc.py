@@ -5,7 +5,7 @@ from liger_etc.components.psf_inputs import PSFInputs, get_psf_params
 from liger_etc.components.sky_inputs import SkyInputs, get_sky_params
 from liger_etc.components.source_inputs import SourceInputs, get_source_params
 from liger_etc.components.aperture_inputs import ApertureInputs, get_aperture_params, PSFAperturePlots
-from liger_etc.components.expusure_inputs import ExposureInputs, get_exposure_params
+from liger_etc.components.exposure_inputs import ExposureInputs, get_exposure_params
 from liger_etc.components.results import ResultsSection
 from liger_etc.calc.calc_wrappers import (
     calc_snr_imager, calc_flux_imager,

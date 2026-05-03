@@ -2,17 +2,13 @@ import streamlit as st
 import numpy as np
 import scipy.constants
 
-from liger_iris_sim.sky import get_maunakea_spectral_sky_emission, get_maunakea_spectral_sky_transmission
-
-from liger_etc.utils.resources import get_filters_summary, get_wave_grid, get_filter_info, get_grating_info
 from liger_etc.components.instrument_inputs import get_instrument_params
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from liger_etc.components.instrument_inputs import get_resolution_from_grating
-
 from liger_etc.utils.resources import get_sky_data
+from liger_etc.utils import sci_html
 
 sky_defaults = {
     'T_tel': 275,
@@ -31,34 +27,38 @@ def SkyInputs():
 
     input_col, plot_col = st.columns([1, 2])
 
-    def _make_Temp_input(param : str):
+    def _make_Temp_input(param : str, full_label : str = None):
+        full_label = full_label or param
         return st.number_input(
             label=r"$T_{" + param + r"}\ (K)$",
             key="T_" + param,
             step=1, min_value=0,
             value=sky_defaults[f"T_{param}"],
-            placeholder=sky_defaults[f"T_{param}"]
+            placeholder=sky_defaults[f"T_{param}"],
+            help=f"Temperature of the {full_label} in Kelvin."
         )
     
-    def _make_Em_input(param : str):
+    def _make_Em_input(param : str, full_label : str = None):
+        full_label = full_label or param
         return st.text_input(
             label=r"$\epsilon_{" + param + r"}$",
             key="Em_" + param,
             value=sky_defaults[f"Em_{param}"],
-            placeholder=sky_defaults[f"Em_{param}"]
+            placeholder=sky_defaults[f"Em_{param}"],
+            help=f"Emissivity of the {full_label}."
         )
 
     
     with input_col:
         col_T, col_Em, col_am  = st.columns([1, 1, 1])
         with col_T:
-            _make_Temp_input("tel")
-            _make_Temp_input("atm")
-            _make_Temp_input("aos")
+            _make_Temp_input("tel", "telescope")
+            _make_Temp_input("atm", "atmosphere")
+            _make_Temp_input("aos", "adaptive optics system")
         with col_Em:
-            _make_Em_input("tel")
-            _make_Em_input("atm")
-            _make_Em_input("aos")
+            _make_Em_input("tel", "telescope")
+            _make_Em_input("atm", "atmosphere")
+            _make_Em_input("aos", "adaptive optics system")
         with col_am:
             st.number_input(
                 label="Air Mass",
@@ -146,34 +146,46 @@ def SkySummary(
     
     wave = sky_data['wave']
     
-    def _format_sky(value, units="", precision=3):
-        formatted = f"{value:.{precision}e}"
-        mantissa, exp = formatted.split("e")
-        exp = int(exp)
-        if units:
-            return rf"${mantissa} \times 10^{{{exp}}}\ \mathrm{{{units}}}$"
-        return rf"${mantissa} \times 10^{{{exp}}}$"
-    
     st.markdown(f"##### Background Sky")
     if resolution is not None:
-        st.markdown(f"**R = {f'{resolution:,}'}**")
+        st.markdown(f"**R = {f'{resolution:,}'}**", help="Spectral resolution")
         dw = wave[1] - wave[0]
         dw_ms = dw / wave[0] * scipy.constants.c / 1e3  # km/s
-        st.markdown(f"**δλ = {f'{dw*1000:.2f}'} Å ({dw_ms:.1f} km/s)**")
+        st.markdown(f"**δλ = {f'{dw*1000:.2f}'} Å ({dw_ms:.1f} km/s)**", help="Wavelength bin size for Nyquist sampling at this spectral resolution")
     else:
         st.markdown(f"**Resolution: N/A**")
 
+    plate_scale = instrument_params['plate_scale']
+    sky_em_tot_pix = np.sum(sky_data['sky_em'])
+    sky_em_tot_spat = sky_em_tot_pix / plate_scale**2  # phot/s/m²/arcsec²
+    erg_em_tot_pix  = np.sum(_phot_to_erg(sky_data['sky_em'], wave))  # erg/s/cm²/pix
+    erg_em_tot_spat = erg_em_tot_pix / plate_scale**2                  # erg/s/cm²/arcsec²
+
+    sky_em_avg_bb_pix = np.mean(sky_data['bbspec'])  # phot/s/m²/pix
+    sky_em_avg_bb_spat = sky_em_avg_bb_pix / plate_scale**2  # erg/s/cm²/pix
+    erg_em_avg_bb_pix = np.mean(_phot_to_erg(sky_data['bbspec'], wave))  # erg/s/cm²/pix
+    erg_em_avg_bb_spat = erg_em_avg_bb_pix / plate_scale**2                  # erg/s/cm²/arcsec²
+
+
     if inst_mode == 'IMG':
-        sky_em_tot_pix = np.sum(sky_data['sky_em'])
-        plate_scale = instrument_params['plate_scale']
-        sky_em_tot_spat = sky_em_tot_pix / plate_scale**2  # phot/s/m²/arcsec²
-        erg_em_tot_pix  = np.sum(_phot_to_erg(sky_data['sky_em'], wave))  # erg/s/cm²/pix
-        erg_em_tot_spat = erg_em_tot_pix / plate_scale**2                  # erg/s/cm²/arcsec²
-        st.markdown("**Total background sky emission:**")
-        st.markdown(f"**{_format_sky(sky_em_tot_spat, 'phot/s/m^2/arcsec^2')}**")
-        st.markdown(f"**{_format_sky(sky_em_tot_pix, 'phot/s/m^2/pixel')}**")
-        st.markdown(f"**{_format_sky(erg_em_tot_spat, 'erg/s/cm^2/arcsec^2')}**")
-        st.markdown(f"**{_format_sky(erg_em_tot_pix, 'erg/s/cm^2/pixel')}**")
+        
+        st.markdown("**Total background sky emission**", help="Integrated sky emission across the bandpass")
+
+        st.markdown(sci_html(sky_em_tot_spat, "ph s^-1 m^-2 arcsec^-2"), unsafe_allow_html=True)
+        st.markdown(sci_html(sky_em_tot_pix,  "ph s^-1 m^-2 pix^-1"),  unsafe_allow_html=True)
+        st.markdown(sci_html(erg_em_tot_spat, "erg s^-1 cm^-2 arcsec^-2"), unsafe_allow_html=True)
+        st.markdown(sci_html(erg_em_tot_pix,  "erg s^-1 cm^-2 pix^-1"),  unsafe_allow_html=True)
+
+    else:
+        if filter_name is not None:
+            st.markdown(f"**Average background sky emission (BB only)**", help="Background sky emission integrated over bandpass, excluding OH emission lines")
+            st.markdown(sci_html(sky_em_avg_bb_spat, "ph s^-1 m^-2 arcsec^-2"), unsafe_allow_html=True)
+            st.markdown(sci_html(sky_em_avg_bb_pix,  "ph s^-1 m^-2 pix^-1"),  unsafe_allow_html=True)
+            st.markdown(sci_html(erg_em_avg_bb_spat, "erg s^-1 cm^-2 arcsec^-2"), unsafe_allow_html=True)
+            st.markdown(sci_html(erg_em_avg_bb_pix,  "erg s^-1 cm^-2 pix^-1"),  unsafe_allow_html=True)
+
+
+        #st.markdown("**Sky emission integrated over bandpass**", help="Integrated sky emission across the bandpass per spatial
 
 @st.cache_data
 def SkyPlot(
@@ -255,7 +267,7 @@ def SkyPlot(
     )
 
     fig.update_yaxes(
-        title_text="<b>γ s⁻¹ m⁻² pixel⁻¹</b>",
+        title_text="<b>ph s⁻¹ m⁻² pixel⁻¹</b>",
         tickfont=dict(size=14, weight='bold'),
         type="log" if em_log_scale else "linear",
         row=2, col=1, secondary_y=False

@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -125,12 +126,27 @@ def PSFInputs():
     with col_inputs:
         psf_option = st.radio(
             label='**PSF Source**',
-            options=['Default PSF', 'Analytic PSF'],
+            options=['default', 'analytic'],
             key='psf_option',
             horizontal=True,
+            format_func=lambda opt: 'Default PSF' if opt == 'default' else 'Analytic PSF',
         )
 
-        if psf_option == 'Analytic PSF':
+        if psf_option == 'default':
+            from liger_etc.components.results import _get_psf_export
+            psf_params = get_psf_params()
+            psf, psf_info = _get_psf_export(instrument_params, psf_params)
+            if psf_info is not None:
+                psf_info = psf_info.get('library_info')
+                if psf_info is not None:
+                    st.markdown(f"**PSF filename and HDU:** {os.path.basename(psf_info.get('filename', 'unknown file'))}, {psf_info.get('hdunum', 'unknown')}", help="Name of the PSF file used from the Liger PSF library and the HDU index.")
+                    st.markdown(f"**Wavelength:** {np.round(psf_info.get('wavelength', 'unknown'), decimals=4)} μm", help="Wavelength at which the PSF is calculated for.")
+                    st.markdown(f"**Fried parameter r₀:** {np.round(psf_info.get('r0') * 1E-4, decimals=2)} cm")
+                    pos = psf_info.get('position')
+                    st.markdown(f"**Field position:** {pos[0]}\", {pos[1]}\"", help="Location in the field the PSF is calculated for in arcsec")
+                    st.markdown(f"**Integration time:** {psf_info.get('itime', 'unknown')} s", help="Integration time used to calculate the PSF in seconds")
+
+        if psf_option == 'analytic':
             st.number_input(
                 label='**Strehl Ratio**',
                 min_value=0.01,
@@ -178,12 +194,21 @@ def PSFInputs():
             st.plotly_chart(fig_psf, width='content')
         with col_slices:
             st.plotly_chart(fig_slice, width='content')
+    else:
+        st.info("Select a grating and filter to show the PSF in IFS mode.")
 
 
 def get_psf_params() -> dict:
     state = st.session_state
+    psf_option = state.get('psf_option')
+    if psf_option == 'analytic':
+        strehl = state.get('psf_strehl')
+        fried_param = state.get('psf_fried_param')
+    else:
+        strehl = None
+        fried_param = None
     return dict(
-        psf_option=state.get('psf_option', 'Default PSF'),
-        strehl=float(state.get('psf_strehl', 0.50)),
-        fried_param=float(state.get('psf_fried_param', 40.0)),
+        psf_option=state.get('psf_option'),
+        strehl=strehl,
+        fried_param=fried_param,
     )

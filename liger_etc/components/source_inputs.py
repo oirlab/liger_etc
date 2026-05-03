@@ -369,7 +369,7 @@ def SourceInputs():
             if _wc_um:
                 st.number_input(
                     label='**Flux (erg/s/cm²):**',
-                    value=_phot_m2_to_erg_cm2(1e-10, _wc_um),
+                    #value=_phot_m2_to_erg_cm2(1e-10, _wc_um),
                     format='%e',
                     key='flux_tot_erg',
                     on_change=_tot_erg_changed,
@@ -555,7 +555,7 @@ def SourceInputs():
                 sr_cols = st.columns(2)
                 with sr_cols[0]:
                     sersic_index = st.number_input(
-                        label='**Sérsic n:**',
+                        label='**Sérsic index:**',
                         value=1,
                         step=1,
                         min_value=0,
@@ -565,7 +565,7 @@ def SourceInputs():
                     )
                 with sr_cols[1]:
                     sersic_eff_radius = st.number_input(
-                        label='**R_eff (arcsec):**',
+                        label='**$R_{eff}$ (arcsec):**',
                         value=1.0,
                         step=0.1,
                         min_value=0.0,

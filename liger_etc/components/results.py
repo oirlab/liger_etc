@@ -7,7 +7,7 @@ from liger_etc.components.psf_inputs import get_psf_params
 from liger_etc.components.sky_inputs import get_sky_params
 from liger_etc.components.source_inputs import get_source_params
 from liger_etc.components.aperture_inputs import get_aperture_params
-from liger_etc.components.expusure_inputs import get_exposure_params
+from liger_etc.components.exposure_inputs import get_exposure_params
 from liger_etc.calc.calc_wrappers import get_active_psf, get_psf
 from liger_etc.utils import get_instrument_prop
 from liger_etc.utils.download_results import download_results
@@ -22,7 +22,7 @@ def _get_psf_export(instrument_params: dict, psf_params: dict) -> tuple[np.ndarr
 
     filter_info = instrument_params.get('filter_info') or {}
     mode = instrument_params.get('_instrument_mode')
-    option = psf_params.get('psf_option', 'Default PSF')
+    option = psf_params.get('psf_option', 'default')
     wcen = float(filter_info.get('wavecenter')) if filter_info.get('wavecenter') is not None else None
 
     psf_info = {
@@ -35,7 +35,7 @@ def _get_psf_export(instrument_params: dict, psf_params: dict) -> tuple[np.ndarr
         'shape': tuple(int(v) for v in psf.shape),
     }
 
-    if option == 'Analytic PSF':
+    if option == 'analytic':
         wave_used = [wcen] if wcen is not None else []
         if mode == 'IMG':
             wmin = filter_info.get('wavemin')
@@ -345,7 +345,7 @@ def ImagerResults_SNR(
         # ── SNR metrics ────────────────────────────────────────────────────────
         st.markdown("##### SNR")
         scale = int(instrument_params['plate_scale'] * 1000)
-        st.metric(f"Peak SNR ({scale} mas)", f"{sim['snr_peak']:.1f}")
+        st.metric(f"Peak SNR ({scale} mas)", f"{sim['snr_peak']:.1f}", help="The peak pixel SNR over the image.")
         st.metric(
             f"Aperture SNR  (R = {aperture_rad_mas:.1f} mas)",
             f"{sim['snr_ap_user']:.1f}",
@@ -355,17 +355,17 @@ def ImagerResults_SNR(
             st.metric(
                 f"Aperture SNR  (R = 2λ/D = {dl_mas:.1f} mas)",
                 f"{sim['snr_ap_diff_lim']:.1f}",
+                help=f"SNR integrated within the diffraction-limit aperture (2λ/D)."
             )
 
         st.divider()
 
         # ── Signal budget ──────────────────────────────────────────────────────
-        st.markdown("##### Signal Budget")
         xpix, ypix = sim['xpix'], sim['ypix']
         src_peak_rate = float(sim['source_rate'][ypix, xpix])
         sky_rate_pix  = float(sim['sky_em_rate'])
         dark_rate_pix = float(sim['dark_rate'])
-
+        st.markdown("##### Signal Budget", help="Electron count rates for the source and noise contributions.")
         st.markdown(
             f"| | Rate (e⁻/s) |\n"
             f"|---|---|\n"
@@ -373,8 +373,9 @@ def ImagerResults_SNR(
             f"| **Source** (aperture) | {S_ap:.3f} |\n"
             f"| **Sky** (per pixel) | {sky_rate_pix:.4f} |\n"
             f"| **Dark** (per pixel) | {dark_rate_pix:.4f} |\n"
-            f"| **Background** (aperture) | {B_ap:.4f} |"
+            f"| **Background** (aperture) | {B_ap:.4f} |\n"
             f"| **Read Noise** (per pixel) | {read_noise:.2f} |"
+            f"| **Read Noise** (aperture) | {(read_noise * np.sqrt(N_pix_ap)):.2f} |"
         )
 
     with col_plot:
@@ -558,13 +559,14 @@ def _ifs_summary_col(
         st.markdown("**Filter:** " + filter_name + f" ({filter_info.get('wavemin', 0):.3f}–{filter_info.get('wavemax', 0):.3f} μm)")
     st.markdown(f"**Itime:** {itime:.1f} s × {n_frames} = {itime * n_frames:.1f} s")
 
-    flux_method = source_params.get('flux_method', 'mag_vega')
-    if flux_method == 'mag_vega':
-        st.markdown(f"**Mag (Vega):** {source_params.get('mag_vega', 0):.2f}")
-    elif flux_method == 'flux_tot':
-        st.markdown(f"**Flux:** {source_params.get('flux_tot', 0):.3e} phot/s/m²")
-    elif flux_method == 'flux_density':
-        st.markdown(f"**Flux Density:** {source_params.get('flux_density', 0):.3e} phot/s/m²/μm")
+    if exposure_params.get('calc_type') != 'flux':
+        flux_method = source_params.get('flux_method', 'mag_vega')
+        if flux_method == 'mag_vega':
+            st.markdown(f"**Mag (Vega):** {source_params.get('mag_vega', 0):.2f}")
+        elif flux_method == 'flux_tot':
+            st.markdown(f"**Flux:** {source_params.get('flux_tot', 0):.3e} phot/s/m²")
+        elif flux_method == 'flux_density':
+            st.markdown(f"**Flux Density:** {source_params.get('flux_density', 0):.3e} phot/s/m²/μm")
 
     st.divider()
 

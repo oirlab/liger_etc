@@ -55,7 +55,7 @@ def ExposureInputs():
                 value=5.0, step=1.0, min_value=0.1,
                 format='%.1f',
                 key='desired_snr',
-                help='Minimum SNR threshold to solve for limiting flux',
+                help='Minimum SNR threshold to solve for limiting flux, integrated over the aperture',
             )
 
     # ── Detector noise parameters ─────────────────────────────────────────
@@ -67,7 +67,7 @@ def ExposureInputs():
             min_value=0.0,
             format='%.4f',
             key='dark_current',
-            help='Detector dark current in electrons per second per pixel',
+            help='Detector dark current in electrons per second per detector pixel',
         )
         st.number_input(
             label='**Read Noise (e⁻ RMS):**',
@@ -76,7 +76,7 @@ def ExposureInputs():
             min_value=0.0,
             format='%.2f',
             key='read_noise',
-            help='Detector read noise in electrons RMS per pixel per read',
+            help='Effective detector read noise in electrons RMS per detector pixel (after UTR sampling)',
         )
 
 
