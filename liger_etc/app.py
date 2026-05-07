@@ -1,25 +1,25 @@
-from pathlib import Path
-import os
-from liger_iris_drp_resources import download
+# from pathlib import Path
+# import os
+# from liger_iris_drp_resources import download
 
-BASE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-CACHE_DIR = BASE / "liger_iris"
-READY = CACHE_DIR / ".ready"
+# BASE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+# CACHE_DIR = BASE / "liger_iris"
+# READY = CACHE_DIR / ".ready"
 
-os.environ["LIGER_IRIS_DRP_RESOURCE_DIR"] = str(CACHE_DIR)
+# os.environ["LIGER_IRIS_DRP_RESOURCE_DIR"] = str(CACHE_DIR)
 
-def ensure_resources():
-    if READY.exists():
-        return
+# def ensure_resources():
+#     if READY.exists():
+#         return
 
-    if os.environ.get("LIGER_IRIS_DOWNLOAD_RESOURCES", "0") != "1":
-        raise RuntimeError("Resources not present and downloads are disabled")
+#     if os.environ.get("LIGER_IRIS_DOWNLOAD_RESOURCES", "0") != "1":
+#         raise RuntimeError("Resources not present and downloads are disabled")
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    download()
-    READY.touch()
+#     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+#     download()
+#     READY.touch()
 
-ensure_resources()
+# ensure_resources()
 
 import streamlit as st
 
