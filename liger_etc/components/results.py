@@ -183,14 +183,14 @@ def SNR_ITIME_PLOT(
         xaxis=dict(
             title=dict(text="<b>Total Integration Time (s)</b>", font=dict(size=14)),
             type='log',
-            tickfont=dict(size=14),
+            tickfont=dict(size=16, weight='bold'),
         ),
         yaxis=dict(
             title=dict(text="<b>Aperture SNR</b>", font=dict(size=14)),
-            tickfont=dict(size=14),
+            tickfont=dict(size=16, weight='bold'),
         ),
         template='plotly_white',
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=12, weight='bold')),
         height=420,
     )
     st.plotly_chart(fig, width='stretch')

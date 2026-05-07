@@ -171,16 +171,16 @@ def PSFAperturePlots():
     fig_ee.update_layout(
         title=dict(text=f'<b>Encircled Energy{convolved_label}</b>', font=dict(size=14)),
         xaxis=dict(
-            title=dict(text='<b>Radius (mas)</b>', font=dict(size=12)),
-            range=[0, r_max], tickfont=dict(size=11),
+            title=dict(text='<b>Radius (mas)</b>', font=dict(size=14)),
+            range=[0, r_max], tickfont=dict(size=12, weight='bold'),
         ),
         yaxis=dict(
-            title=dict(text='<b>EE</b>', font=dict(size=12)),
-            range=[0, 1.02], tickfont=dict(size=11),
+            title=dict(text='<b>EE</b>', font=dict(size=14)),
+            range=[0, 1.02], tickfont=dict(size=12, weight='bold'),
         ),
         template='plotly_white',
         height=350,
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=12, weight='bold')),
     )
 
     # ── PSF Heatmap ───────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ def PSFAperturePlots():
         x=x_mas, y=y_mas, z=psf_log,
         colorscale='Inferno',
         colorbar=dict(
-            title=dict(text='log₁₀(PSF)', side='right', font=dict(size=11)),
+            title=dict(text='log₁₀(PSF)', side='right', font=dict(size=14, weight='bold')),
             tickvals=[-4, -3, -2, -1, 0],
             ticktext=['-4', '-3', '-2', '-1', '0'],
             thickness=12,
@@ -242,17 +242,17 @@ def PSFAperturePlots():
     fig_psf.update_layout(
         title=dict(text=f'<b>PSF{convolved_label}</b> — log scale', font=dict(size=14)),
         xaxis=dict(
-            title=dict(text='<b>Δx (mas)</b>', font=dict(size=12)),
-            range=[-_span, _span], autorange=False, tickfont=dict(size=11),
+            title=dict(text='<b>Δx (mas)</b>', font=dict(size=14)),
+            range=[-_span, _span], autorange=False, tickfont=dict(size=12, weight='bold'),
         ),
         yaxis=dict(
-            title=dict(text='<b>Δy (mas)</b>', font=dict(size=12)),
+            title=dict(text='<b>Δy (mas)</b>', font=dict(size=14)),
             scaleanchor='x', scaleratio=1,
-            range=[-_span, _span], autorange=False, tickfont=dict(size=11),
+            range=[-_span, _span], autorange=False, tickfont=dict(size=12, weight='bold'),
         ),
         margin=dict(l=_L, r=_R, t=_T, b=_B),
         template='plotly_white',
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=12, weight='bold')),
         autosize=False,
         width=_INNER + _L + _R,
         height=_INNER + _T + _B,

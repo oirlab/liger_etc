@@ -393,7 +393,8 @@ def SourceInputs():
 
             flux_value = st.number_input(
                 label='**Flux Density (phot/s/m²/μm):**',
-                value=1e-10,
+                #value=1e-10,
+                #value=st.session_state.get('flux_density', "min"),
                 format='%e',
                 key='flux_density',
                 on_change=_dens_phot_changed,
@@ -401,7 +402,7 @@ def SourceInputs():
             if _wc_um:
                 st.number_input(
                     label='**Flux Density (erg/s/cm²/μm):**',
-                    value=_phot_m2_to_erg_cm2(1e-10, _wc_um),
+                    #value=_phot_m2_to_erg_cm2(st.session_state.get('flux_density', 1e-10), _wc_um),
                     format='%e',
                     key='flux_density_erg',
                     on_change=_dens_erg_changed,

@@ -97,6 +97,15 @@ def InstrumentInputs():
             get_valid_gratings_for_mode(instrument_name=instrument_name, ifs_mode=ifs_mode)
             if _instrument_mode == 'IFS' else []
         )
+        if not isinstance(grating_options, list) and grating_options is not None:
+            grating_options = grating_options.tolist()
+
+        # TODO: REMOVE ME EVENTUALLY if needed
+        if _instrument_mode == 'IFS':
+            _grating_options = grating_options.copy()
+            for opt in _grating_options:
+                if opt not in grating_info:
+                    grating_options.remove(opt)
 
         def _format_grating_option(g):
             if _instrument_mode != 'IFS':
@@ -106,6 +115,7 @@ def InstrumentInputs():
                 return g
             return f"{g} ({np.round(info['wavemin'], decimals=3)}–{np.round(info['wavemax'], decimals=3)} μm)"
 
+        st.markdown("##### Sampling")
         plate_scale = st.radio(
             label='**Plate Scale (mas)**',
             options=plate_scale_options,
@@ -183,13 +193,14 @@ def InstrumentInputs():
     with col_inputs1:
         _unit = 'pixels' if _instrument_mode == 'IMG' else 'spaxels'
         help_text = f"Number of {_unit} in y and x directions."
+        size_str = f"{size[0]} × {size[1]} {_unit}" if size is not None else "N/A"
         st.markdown(
-            f"**Sampling:** {size[0]} × {size[1]} {_unit}" if size is not None else "**Sampling:** N/A",
+            f"**Spatial grid:** {size_str}",
             help=help_text
         )
         st.markdown(
             f'**FoV:** {fov[0]:.2f}" × {fov[1]:.2f}"' if fov is not None else "**FoV:** N/A",
-            help="Field of view in arcseconds, calculated from plate scale and sampling."
+            help="Field of view in arcseconds, calculated from plate scale and spatial grid."
         )
 
     # ── Derived quantities ─────────────────────────────────────────────────────
@@ -218,7 +229,7 @@ def InstrumentInputs():
 
     # ── Col 2 (continued): Throughputs ──────────────────────────────────────────
     with col_inputs2:
-        st.markdown('**Throughput**')
+        st.markdown('##### Throughput')
 
         _tput_col_tel, _tput_col_ao = st.columns(2)
         if 'tput_tel' not in st.session_state:

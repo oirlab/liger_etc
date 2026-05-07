@@ -77,7 +77,7 @@ def SkyInputs():
             
             # Reset button
             st.button(
-                label="**Reset Sky Params**",
+                label="**Reset Sky**",
                 on_click=_reset_values,
                 key="reset_sky"
             )
