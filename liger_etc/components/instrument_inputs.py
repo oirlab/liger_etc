@@ -61,7 +61,7 @@ def InstrumentInputs():
 
     st.markdown('### Instrument Config')
 
-    col_inputs1, col_inputs2, col_tput, col_curve = st.columns([1.1, 1.5, 1.5, 2])
+    col_inputs1, col_inputs2, col_curve = st.columns([1.1, 1.5, 2])
 
     # ── Col 1: Instrument Inputs ───────────────────────────────────────────────
     with col_inputs1:
@@ -181,13 +181,15 @@ def InstrumentInputs():
         fov = calc_fov(float(plate_scale), size) if size is not None else None
 
     with col_inputs1:
+        _unit = 'pixels' if _instrument_mode == 'IMG' else 'spaxels'
+        help_text = f"Number of {_unit} in y and x directions."
         st.markdown(
             f"**Sampling:** {size[0]} × {size[1]} {_unit}" if size is not None else "**Sampling:** N/A",
-            help="Number of spatial elements (pixels for imager, spaxels for IFS) in y and x directions."
+            help=help_text
         )
         st.markdown(
             f'**FoV:** {fov[0]:.2f}" × {fov[1]:.2f}"' if fov is not None else "**FoV:** N/A",
-            help="Field of view in arcseconds, calculated from plate scale and number of spatial elements."
+            help="Field of view in arcseconds, calculated from plate scale and sampling."
         )
 
     # ── Derived quantities ─────────────────────────────────────────────────────
@@ -214,57 +216,60 @@ def InstrumentInputs():
         st.session_state.tput_filt = None
         st.session_state.tput_inst = None
 
-    # ── Col 2: Throughputs ─────────────────────────────────────────────────────
-    with col_tput:
+    # ── Col 2 (continued): Throughputs ──────────────────────────────────────────
+    with col_inputs2:
         st.markdown('**Throughput**')
 
+        _tput_col_tel, _tput_col_ao = st.columns(2)
         if 'tput_tel' not in st.session_state:
             st.session_state.tput_tel = _tput_defaults['tel']
-        tput_tel = st.number_input(
-            label='**Telescope**',
-            step=0.01, min_value=0.0, max_value=1.0,
-            key='tput_tel',
-            placeholder=_tput_defaults['tel'],
-            help="Telescope throughput"
-        )
+        with _tput_col_tel:
+            tput_tel = st.number_input(
+                label='**Telescope**',
+                step=0.01, min_value=0.0, max_value=1.0,
+                key='tput_tel',
+                placeholder=_tput_defaults['tel'],
+                help="Telescope throughput"
+            )
 
         if 'tput_ao' not in st.session_state:
             st.session_state.tput_ao = _tput_defaults['ao']
-        tput_ao = st.number_input(
-            label='**AO**',
-            step=0.01, min_value=0.0, max_value=1.0,
-            key='tput_ao',
-            placeholder=_tput_defaults['ao'],
-            help="AO throughput"
-        )
-
-        st.markdown(
-            f"**Instrument-only:** {np.round(st.session_state.tput_inst, decimals=3)}"
-            if st.session_state.tput_inst is not None else "**Instrument-only:** N/A",
-            help="Wavelength dependent, instrument-only throughput. This does not include the filter."
-        )
-
-        st.markdown(
-            f"**Filter:** {np.round(st.session_state.tput_filt, decimals=3)}"
-            if filter_name is not None else "**Filter:** N/A",
-            help="Maximum filter throughput over bandpass."
-        )
+        with _tput_col_ao:
+            tput_ao = st.number_input(
+                label='**AO**',
+                step=0.01, min_value=0.0, max_value=1.0,
+                key='tput_ao',
+                placeholder=_tput_defaults['ao'],
+                help="AO throughput"
+            )
 
         if wavecen is not None:
             tput_tot = compute_throughput(get_instrument_params())
         else:
             tput_tot = None
 
-        st.markdown(
-            f"**Total:** {np.round(tput_tot, decimals=3)}" if tput_tot is not None else "**Total:** N/A",
-            help="Total system throughput, not including sky transmission."
-        )
-
         def _reset_tput_values():
             for key, value in _tput_defaults.items():
                 st.session_state[f'tput_{key}'] = value
 
-        st.button('Reset Throughput', on_click=_reset_tput_values, key='reset_tputs')
+        _tput_col_vals, _tput_col_reset = st.columns([2, 1.5])
+        with _tput_col_vals:
+            st.markdown(
+                f"**Instrument-only:** {np.round(st.session_state.tput_inst, decimals=3)}"
+                if st.session_state.tput_inst is not None else "**Instrument-only:** N/A",
+                help="Wavelength dependent, instrument-only throughput. This does not include the filter."
+            )
+            st.markdown(
+                f"**Filter:** {np.round(st.session_state.tput_filt, decimals=3)}"
+                if filter_name is not None else "**Filter:** N/A",
+                help="Maximum filter throughput over bandpass."
+            )
+            st.markdown(
+                f"**Total:** {np.round(tput_tot, decimals=3)}" if tput_tot is not None else "**Total:** N/A",
+                help="Total system throughput, not including sky transmission."
+            )
+        with _tput_col_reset:
+            st.button('Reset Throughputs', on_click=_reset_tput_values, key='reset_tputs', help='Reset throughput values to defaults')
 
     # ── Col 3: Filter Transmission Curve ──────────────────────────────────────
     with col_curve:

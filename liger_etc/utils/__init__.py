@@ -23,8 +23,20 @@ def get_instrument_prop(instrument_name : str, prop_name : str | None):
     raise ValueError(f"Unknown instrument: {instrument_name}")
 
 
-def sci_html(val, unit_str, precision=3):
-    exp = int(np.floor(np.log10(abs(val))))
-    coeff = val / 10**exp
-    unit_html = re.sub(r'\^(-?\d+)', lambda m: f"<sup>{m.group(1)}</sup>", unit_str)
-    return f"<span style='font-size:1.1rem'>{coeff:.{precision}f} &times; 10<sup>{exp}</sup>&nbsp;&nbsp;{unit_html}</span>"
+def sci_html(val, unit_str=None, precision=3, font_size="1.1rem", sci_thresh=(1e-3, 1e3)):
+    abs_val = abs(val)
+
+    if abs_val != 0 and (abs_val < sci_thresh[0] or abs_val >= sci_thresh[1]):
+        exp = int(np.floor(np.log10(abs_val)))
+        coeff = val / 10**exp
+        num_html = f"{coeff:.{precision}f} &times; 10<sup>{exp}</sup>"
+    else:
+        num_html = f"{val:.{precision}f}"
+
+    if unit_str:
+        unit_html = re.sub(r'\^(-?\d+)', lambda m: f"<sup>{m.group(1)}</sup>", unit_str)
+        unit_html = f"&nbsp;&nbsp;{unit_html}"
+    else:
+        unit_html = ""
+
+    return f"<span style='font-size:{font_size}'>{num_html}{unit_html}</span>"

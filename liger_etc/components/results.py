@@ -11,6 +11,7 @@ from liger_etc.components.exposure_inputs import get_exposure_params
 from liger_etc.calc.calc_wrappers import get_active_psf, get_psf
 from liger_etc.utils import get_instrument_prop
 from liger_etc.utils.download_results import download_results
+from liger_etc.utils import sci_html
 
 
 def _get_psf_export(instrument_params: dict, psf_params: dict) -> tuple[np.ndarray | None, dict]:
@@ -312,10 +313,6 @@ def ImagerResults_SNR(
 
     filter_name      = instrument_params.get('filter_name', 'N/A')
     filter_info      = instrument_params.get('filter_info') or {}
-    # instrument_label = (
-    #     'IRIS (TMT)' if instrument_params.get('instrument_name', '').lower() == 'iris'
-    #     else 'Liger (Keck)'
-    # )
 
     col_metrics, col_plot = st.columns([1, 2])
 
@@ -337,24 +334,30 @@ def ImagerResults_SNR(
             st.markdown(f"**Mag (Vega):** {source_params.get('mag_vega', 0):.2f}")
         elif flux_method == 'flux_tot':
             st.markdown(f"**Flux:** {source_params.get('flux_tot', 0):.3e} phot/s/m²")
+            st.markdown(f"**Flux:** {sci_html(val=source_params.get('flux_tot', 0), unit_str='ph s^-1 m^-2', precision=3, font_size='1.5rem', sci_thresh=(1e-4, 1e4))}", unsafe_allow_html=True)
         elif flux_method == 'flux_density':
-            st.markdown(f"**Flux Density:** {source_params.get('flux_density', 0):.3e} phot/s/m²/μm")
+            #st.markdown(f"**Flux Density:** {source_params.get('flux_density', 0):.3e} phot/s/m²/μm")
+            st.markdown(f"**Flux Density:** {sci_html(val=source_params.get('flux_density', 0), unit_str='ph s^-1 m^-2 μm^-1', precision=3, font_size='1.5rem', sci_thresh=(1e-4, 1e4))}", unsafe_allow_html=True)
 
         st.divider()
 
         # ── SNR metrics ────────────────────────────────────────────────────────
-        st.markdown("##### SNR")
+        st.markdown("#### SNR")
         scale = int(instrument_params['plate_scale'] * 1000)
-        st.metric(f"Peak SNR ({scale} mas)", f"{sim['snr_peak']:.1f}", help="The peak pixel SNR over the image.")
-        st.metric(
-            f"Aperture SNR  (R = {aperture_rad_mas:.1f} mas)",
-            f"{sim['snr_ap_user']:.1f}",
+        st.markdown(
+            f"Peak SNR per pixel ({scale} mas)<br>{sci_html(val=sim['snr_peak'], precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+            help="The peak pixel SNR over the image."
+        )
+        st.markdown(
+            f"Aperture SNR  (R = {aperture_rad_mas:.1f} mas)<br>{sci_html(val=sim['snr_ap_user'], precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
             help=f"SNR integrated within the user-defined aperture.",
         )
         if dl_mas is not None and sim.get('snr_ap_diff_lim') is not None:
-            st.metric(
-                f"Aperture SNR  (R = 2λ/D = {dl_mas:.1f} mas)",
-                f"{sim['snr_ap_diff_lim']:.1f}",
+            st.markdown(
+                f"Aperture SNR  (R = 2λ/D = {dl_mas:.1f} mas)<br>{sci_html(val=sim['snr_ap_diff_lim'], precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+                unsafe_allow_html=True,
                 help=f"SNR integrated within the diffraction-limit aperture (2λ/D)."
             )
 
@@ -412,18 +415,53 @@ def ImagerResults_flux(
         return
 
     T = sim['total_time']
-    filter_info = instrument_params.get('filter_info') or {}
+    instrument_name = instrument_params.get('instrument_name')
+    filter_name     = instrument_params.get('filter_name', 'N/A')
+    filter_info     = instrument_params.get('filter_info') or {}
+    itime           = float(exposure_params['input_itime'])
+    n_frames        = int(exposure_params['input_n_frames'])
     wave_eff_um = float(filter_info.get('wavecenter', 1.65))
     # 1 phot/s/m² = (hc/λ) J/phot × 1e3 erg/J/cm² → erg/s/cm²
     phot_to_erg = 1.986e-16 / wave_eff_um  # erg s cm² / (phot/s/m²)
     erg_flux_lim = sim['photon_flux_lim'] * phot_to_erg
-    st.markdown(
-        f"For **{T:.1f} s** total integration, "
-        f"SNR ≥ {sim['desired_snr']:.1f} in aperture (R = {sim['aperture_user']:.1f} mas):"
-    )
-    st.metric("Limiting Magnitude (Vega)", f"{sim['mag_lim']:.2f}")
-    st.metric("Limiting Photon Flux", f"{sim['photon_flux_lim']:.3e} phot/s/m²")
-    st.metric("Limiting Flux", f"{erg_flux_lim:.3e} erg/s/cm²")
+
+    col_left, col_right = st.columns([1, 1])
+
+    with col_left:
+        st.markdown("#### Summary")
+        st.markdown(f"**Instrument:** {instrument_name}")
+        collarea = get_instrument_prop(instrument_name, 'collarea')
+        colldiam = get_instrument_prop(instrument_name, 'colldiam')
+        st.markdown(f"**Telescope:** {instrument_params.get('telescope_name')} (D={colldiam:.2f} m, A={collarea:.1f} m²)")
+        if filter_info:
+            st.markdown("**Filter:** " + filter_name + f" ({filter_info.get('wavemin', 0):.3f}–{filter_info.get('wavemax', 0):.3f} μm)")
+        st.markdown(f"**Itime:** {itime:.1f} s × {n_frames} = {itime * n_frames:.1f} s")
+
+    with col_right:
+        st.markdown("#### Limiting Sensitivity")
+        st.markdown(
+            f"**Desired SNR ≥ {sim['desired_snr']:.1f} in aperture R = {sim['aperture_user']:.1f} mas**"
+        )
+        st.markdown(
+            f"Limiting Magnitude (Vega)",
+            help=f"The limiting magnitude to achieve SNR ≥ {sim['desired_snr']:.1f} in the specified aperture and total integration time."
+        )
+        st.markdown(
+            f"{sci_html(val=sim['mag_lim'], precision=2, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"Limiting Flux",
+            help=f"The minimum integrated flux to achieve SNR ≥ {sim['desired_snr']:.1f} in the specified aperture and total integration time."
+        )
+        st.markdown(
+            f"{sci_html(val=sim['photon_flux_lim'], unit_str='ph s^-1 m^-2', precision=3, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"{sci_html(val=erg_flux_lim, unit_str='erg s^-1 cm^-2', precision=3, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
 
 
 # ── IFS plot helpers ─────────────────────────────────────────────────────────
@@ -520,7 +558,7 @@ def SNRSpectrumPlot(
             tickfont=dict(size=12),
         ),
         yaxis=dict(
-            title=dict(text='<b>SNR per channel</b>', font=dict(size=13)),
+            title=dict(text='<b>SNR per spectral bin</b>', font=dict(size=13)),
             tickfont=dict(size=12),
         ),
         template='plotly_white',
@@ -564,9 +602,9 @@ def _ifs_summary_col(
         if flux_method == 'mag_vega':
             st.markdown(f"**Mag (Vega):** {source_params.get('mag_vega', 0):.2f}")
         elif flux_method == 'flux_tot':
-            st.markdown(f"**Flux:** {source_params.get('flux_tot', 0):.3e} phot/s/m²")
+            st.markdown(f"**Flux:** {sci_html(source_params.get('flux_tot', 0), unit_str='phot s^-1 m^-2', precision=3)}", unsafe_allow_html=True)
         elif flux_method == 'flux_density':
-            st.markdown(f"**Flux Density:** {source_params.get('flux_density', 0):.3e} phot/s/m²/μm")
+            st.markdown(f"**Flux Density:** {sci_html(source_params.get('flux_density', 0), unit_str='phot s^-1 m^-2 μm^-1', precision=3)}", unsafe_allow_html=True)
 
     st.divider()
 
@@ -596,24 +634,68 @@ def IFSResults_SNR(
     dl_mas           = sim.get('aperture_diff_lim')
     itime            = float(exposure_params['input_itime'])
     n_frames         = int(exposure_params['input_n_frames'])
+    read_noise       = float(exposure_params['read_noise'])
 
-    median_snr    = float(np.nanmedian(snr_spec))
-    peak_snr      = float(np.nanmax(snr_spec))
-    peak_snr_dl   = float(np.nanmax(snr_spec_dl)) if snr_spec_dl is not None else None
+    peak_snr         = float(np.nanmax(snr_spec))
+    median_snr       = float(np.nanmedian(snr_spec))
+    integrated_snr   = float(np.sqrt(np.nansum(snr_spec ** 2)))
+    peak_snr_dl      = float(np.nanmax(snr_spec_dl)) if snr_spec_dl is not None else None
+    integrated_snr_dl = float(np.sqrt(np.nansum(snr_spec_dl ** 2))) if snr_spec_dl is not None else None
 
     col_left, col_right = st.columns([1, 2])
 
     with col_left:
-        _ifs_summary_col(
-            sim, instrument_params, source_params, exposure_params,
-            extra_metrics=[
-                ('Peak SNR', f'{peak_snr:.1f}', 'Maximum signal-to-noise ratio across bandpass'),
-                (f'Median SNR', f'{median_snr:.1f}', 'Median signal-to-noise ratio across bandpass'),
-                (f'Aperture R = {aperture_rad_mas:.1f} mas', '', 'Aperture radius in milliarcseconds'),
-            ] + ([
-                (f'Peak SNR (2λ/D = {dl_mas:.1f} mas)', f'{peak_snr_dl:.1f}', 'Maximum signal-to-noise ratio at diffraction limit over bandpass'),
-            ] if peak_snr_dl is not None else [])
+        _ifs_summary_col(sim, instrument_params, source_params, exposure_params)
+
+        st.markdown("#### SNR")
+        st.markdown(
+            f"Peak SNR per spectral bin (R={aperture_rad_mas:.1f} mas)<br>{sci_html(val=peak_snr, precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+            help="Maximum SNR per spectral bin over the bandpass, spatially integrated over the user aperture.",
         )
+        st.markdown(
+            f"Median SNR per spectral bin (R={aperture_rad_mas:.1f} mas)<br>{sci_html(val=median_snr, precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+            help="Median SNR per spectral bin over the bandpass, spatially integrated over the user aperture.",
+        )
+        st.markdown(
+            f"Integrated SNR (R = {aperture_rad_mas:.1f} mas)<br>{sci_html(val=integrated_snr, precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+            help="Total SNR integrated over bandpass and spatially over user aperture.",
+        )
+        if dl_mas is not None and peak_snr_dl is not None:
+            st.markdown(
+                f"Peak SNR per spectral bin (2λ/D = {dl_mas:.1f} mas)<br>{sci_html(val=peak_snr_dl, precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+                unsafe_allow_html=True,
+                help="Maximum SNR per spectral bin over the bandpass, spatially integrated over the diffraction-limit aperture (2λ/D).",
+            )
+            st.markdown(
+                f"Integrated SNR (2λ/D = {dl_mas:.1f} mas)<br>{sci_html(val=integrated_snr_dl, precision=1, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+                unsafe_allow_html=True,
+                help="Total SNR integrated over bandpass and spatially over the diffraction-limit aperture (2λ/D).",
+            )
+
+        st.divider()
+
+        # ── Signal budget ──────────────────────────────────────────────────────
+        # T = itime * n_frames
+        # N_pix_ap = sim['N_pix_ap']
+        # src_ap_rate_total = float(np.sum(src_spec)) / T
+        # sky_em_rate_raw = sim['sky_emission_rate']
+        # sky_rate_pix = float(np.median(sky_em_rate_raw)) if hasattr(sky_em_rate_raw, '__len__') else float(sky_em_rate_raw)
+        # dark_rate_pix = float(sim['dark_rate'])
+        # B_ap = (sky_rate_pix + dark_rate_pix) * N_pix_ap
+        # st.markdown("##### Signal Budget", help="Electron count rates for the source and noise contributions, summed over the bandpass.")
+        # st.markdown(
+        #     f"| | Rate (e⁻/s) |\n"
+        #     f"|---|---|\n"
+        #     f"| **Source** (aperture, Σ channels) | {src_ap_rate_total:.3f} |\n"
+        #     f"| **Sky** (per pixel, median) | {sky_rate_pix:.4f} |\n"
+        #     f"| **Dark** (per pixel) | {dark_rate_pix:.4f} |\n"
+        #     f"| **Background** (aperture) | {B_ap:.4f} |\n"
+        #     f"| **Read Noise** (per pixel) | {read_noise:.2f} |\n"
+        #     f"| **Read Noise** (aperture) | {(read_noise * np.sqrt(N_pix_ap)):.2f} |"
+        # )
 
     with col_right:
         ObservedSpectrumPlot(
@@ -668,33 +750,86 @@ def IFSResults_flux(
         wave_eff_um = float((instrument_params.get('filter_info') or {}).get('wavecenter', 1.65))
         phot_to_erg = 1.986e-16 / wave_eff_um
         erg_flux_lim = sim['photon_flux_lim'] * phot_to_erg
+        st.markdown("#### Limiting Sensitivity")
         st.markdown(
-            f"For **{T:.1f} s** total integration, SNR ≥ {desired_snr:.1f} "
-            f"per channel (R = {aperture_rad_mas:.1f} mas):"
+            f"**Desired SNR ≥ {desired_snr:.1f} per spectral bin in aperture R = {aperture_rad_mas:.1f} mas**"
         )
-        st.metric('Limiting Magnitude (Vega, continuum)', f'{mag_lim:.2f}')
-        st.metric('Limiting Flux', f"{sim['photon_flux_lim']:.3e} phot/s/m²")
-        st.metric('Limiting Flux (erg/s/cm²)', f"{erg_flux_lim:.3e} erg/s/cm²")
+        # st.markdown(
+        #     f"For **{T:.1f} s** total integration, SNR ≥ {desired_snr:.1f} "
+        #     f"per spectral bin (R = {aperture_rad_mas:.1f} mas):"
+        # )
+        st.markdown(
+            f"Limiting Magnitude (Vega, continuum)<br>{sci_html(val=mag_lim, precision=2, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "Limiting Flux",
+            help="The minimum integrated flux to achieve the specified SNR per spectral bin in the given aperture and total integration time."
+        )
+        st.markdown(
+            f"{sci_html(val=sim['photon_flux_lim'], unit_str='ph s^-1 m^-2', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"{sci_html(val=erg_flux_lim, unit_str='erg s^-1 cm^-2', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+
+        flux_lim_density_med = float(np.nanmedian(flux_lim_density))
+        erg_flux_lim_density_med = flux_lim_density_med * (1.986e-16 / wave_eff_um)
+        st.markdown(
+            "Limiting Flux Density (median)",
+            help="Median limiting flux density per spectral bin over the bandpass, to achieve the specified SNR per spectral bin in the given aperture and total integration time."
+        )
+        st.markdown(
+            f"{sci_html(val=flux_lim_density_med, unit_str='ph s^-1 m^-2 μm^-1', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"{sci_html(val=erg_flux_lim_density_med, unit_str='erg s^-1 cm^-2 μm^-1', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
 
     with col_right:
         finite_mask = np.isfinite(flux_lim_density)
+        # Per-channel conversion: hc/λ, units phot/s/m²/μm → erg/s/cm²/μm
+        flux_lim_erg = flux_lim_density * (1.986e-16 / wave)
         fig = go.Figure()
+        # Visible trace on left axis (phot units)
         fig.add_trace(go.Scatter(
             x=wave[finite_mask], y=flux_lim_density[finite_mask],
             mode='lines',
             line=dict(color='royalblue', width=2),
             name='Limiting flux density',
+            yaxis='y1',
+        ))
+        # Invisible trace on right axis (erg units) — drives yaxis2 range only
+        fig.add_trace(go.Scatter(
+            x=wave[finite_mask], y=flux_lim_erg[finite_mask],
+            mode='lines',
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo='skip',
+            yaxis='y2',
         ))
         fig.update_layout(
             title=dict(
                 text=(
-                    f'<b>Limiting Flux Density per Channel</b>'
+                    f'<b>Limiting Flux Density per spectral bin</b>'
                     f'<br><sup>SNR ≥ {desired_snr:.1f}, T = {T:.1f} s</sup>'
                 ),
                 font=dict(size=16),
             ),
             xaxis=dict(title=dict(text='<b>Wavelength (μm)</b>', font=dict(size=13))),
-            yaxis=dict(title=dict(text='<b>Flux Density (phot/s/m²/μm)</b>', font=dict(size=13))),
+            yaxis=dict(
+                title=dict(text='<b>Flux Density (ph s⁻¹ m⁻² μm⁻¹)</b>', font=dict(size=13)),
+                side='left',
+            ),
+            yaxis2=dict(
+                title=dict(text='<b>Flux Density (erg s⁻¹ cm⁻² μm⁻¹)</b>', font=dict(size=13)),
+                overlaying='y',
+                side='right',
+            ),
             template='plotly_white',
             height=400,
         )

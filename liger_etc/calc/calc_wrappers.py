@@ -182,7 +182,6 @@ def _background_rates(instrument_params: dict, sky_params: dict, dark_current: f
 
 
 # ── calc_type = 'snr'  ────────────────────────────────────────────────────────
-
 def calc_snr_imager(
     instrument_params: dict,
     sky_params: dict,
@@ -260,70 +259,7 @@ def calc_snr_imager(
     return sim
 
 
-# ── calc_type = 'itime'  ──────────────────────────────────────────────────────
-
-def calc_itime_imager(
-    instrument_params: dict,
-    sky_params: dict,
-    source_params: dict,
-    exposure_params: dict,
-    aperture_params: dict,
-    n_frames: int = 1,
-) -> dict:
-    """
-    Analytically find the integration time for a desired aperture SNR.
-    Solves: S²t² − snr²(S+B)t − snr²·RN_var = 0  (t = total time)
-    """
-    desired_snr = float(exposure_params['snr'])
-    read_noise = float(exposure_params['read_noise'])
-    dark_current = float(exposure_params['dark_current'])
-    tput = instrument_params['tput_tot']
-    collarea = get_instrument_prop(instrument_params['instrument_name'], 'collarea')
-    plate_scale = instrument_params['plate_scale']
-
-    sky_em_rate_pix, dark_rate, sky_trans_mean, _ = _background_rates(
-        instrument_params, sky_params, dark_current
-    )
-
-    aperture_rad_mas = float(aperture_params['aperture_rad'])
-    r_pix = aperture_rad_mas / (plate_scale * 1000.0)
-    N_pix_ap = np.pi * r_pix ** 2
-
-    photon_flux = _flux_to_photons(source_params, instrument_params['filter_info'])
-    unit_img = _build_point_source_image(instrument_params, source_params, 1.0)
-    f_ap = _aperture_sum(unit_img, r_pix)
-    S_ap = photon_flux * collarea * tput * sky_trans_mean * f_ap
-
-    B_ap = (sky_em_rate_pix + dark_rate) * N_pix_ap
-    RN_var = N_pix_ap * (read_noise * np.sqrt(n_frames)) ** 2
-
-    snr2 = desired_snr ** 2
-    a = S_ap ** 2
-    b = -snr2 * (S_ap + B_ap)
-    c = -snr2 * RN_var
-    discriminant = b ** 2 - 4.0 * a * c
-
-    if S_ap <= 0 or discriminant < 0:
-        return {'calc_type': 'itime', 'error': 'Cannot achieve desired SNR with given parameters.'}
-
-    T = (-b + np.sqrt(discriminant)) / (2.0 * a)
-    itime = T / n_frames
-
-    return dict(
-        calc_type='itime',
-        itime=itime,
-        n_frames=n_frames,
-        total_time=T,
-        desired_snr=desired_snr,
-        S_ap=S_ap,
-        B_ap=B_ap,
-        aperture_user=aperture_rad_mas,
-        aperture_diff_lim=aperture_params.get('aperture_rad_diff_lim'),
-    )
-
-
 # ── calc_type = 'flux'  ───────────────────────────────────────────────────────
-
 def calc_flux_imager(
     instrument_params: dict,
     sky_params: dict,
@@ -458,7 +394,6 @@ def _ifs_aperture_sum_spectrum(
 
 
 # ── calc_type = 'snr' (IFS) ──────────────────────────────────────────────────
-
 def calc_snr_ifs(
     instrument_params: dict,
     sky_params: dict,
@@ -485,6 +420,12 @@ def calc_snr_ifs(
 
     # Detector size — use the actual IFS FOV, no padding
     size = instrument_params['size']
+    size = (*size,)
+    if size[0] % 2 == 0:
+        size = (size[0] + 1, size[1])
+    if size[1] % 2 == 0:
+        size = (size[0], size[1] + 1)
+
     xpix_f = (size[1] - 1) / 2.0
     ypix_f = (size[0] - 1) / 2.0
 
@@ -550,97 +491,7 @@ def calc_snr_ifs(
     )
     return sim
 
-
-# ── calc_type = 'itime' (IFS) ────────────────────────────────────────────────
-
-def calc_itime_ifs(
-    instrument_params: dict,
-    sky_params: dict,
-    source_params: dict,
-    exposure_params: dict,
-    aperture_params: dict,
-    n_frames: int = 1,
-) -> dict:
-    """
-    Per-wavebin analytical itime for desired per-channel aperture SNR.
-    Solves per wavebin: S²t² − snr²(S+B)t − snr²·RN_var = 0
-    Returns the worst-case (longest) required itime across the bandpass.
-    """
-    desired_snr  = float(exposure_params['snr'])
-    read_noise   = float(exposure_params['read_noise'])
-    dark_current = float(exposure_params['dark_current'])
-    tput         = instrument_params['tput_tot']
-    collarea     = get_instrument_prop(instrument_params['instrument_name'], 'collarea')
-    plate_scale  = instrument_params['plate_scale']
-    filter_info  = instrument_params['filter_info']
-    ifs_mode     = instrument_params['ifs_mode'].lower()
-
-    sky_data = get_sky_data(instrument_params, sky_params)
-    wave     = np.array(sky_data['wave'])
-
-    psf = _build_effective_psf(instrument_params, source_params)
-
-    size = instrument_params['size']
-    xpix_f = (size[1] - 1) / 2.0
-    ypix_f = (size[0] - 1) / 2.0
-
-    template_spec = _get_ifs_spectrum(source_params, wave, filter_info, resolution=instrument_params['resolution'])  # phot/s/m²/wavebin
-    unit_cube = np.zeros((len(wave), *size), dtype=np.float32)
-    make_point_source_ifs_cube(
-        xpix_f, ypix_f,
-        wave=wave,
-        template=np.ones_like(template_spec, dtype=np.float32),
-        psf=psf, cube_out=unit_cube,
-    )
-
-    aperture_rad_mas = float(aperture_params['aperture_rad'])
-    r_pix = aperture_rad_mas / (plate_scale * 1000.0)
-    N_pix_ap = np.pi * r_pix ** 2
-
-    # PSF fraction in aperture per wavebin (spatially summed)
-    f_ap_cube = _ifs_aperture_sum_spectrum(unit_cube, r_pix)
-
-    # Source e-/s in aperture per wavebin
-    S_arr = template_spec * collarea * tput * np.array(sky_data['sky_trans']) * f_ap_cube
-
-    sky_em_rate_pix = np.array(sky_data['sky_em']) * collarea * tput  # e-/s/pix/wavebin
-    B_arr = (sky_em_rate_pix + dark_current) * N_pix_ap
-
-    RN_var = N_pix_ap * (read_noise * np.sqrt(n_frames)) ** 2
-    snr2 = desired_snr ** 2
-
-    a = S_arr ** 2
-    b = -snr2 * (S_arr + B_arr)
-    c = np.full_like(a, -snr2 * RN_var)
-
-    disc = b ** 2 - 4.0 * a * c
-    valid = (S_arr > 0) & (disc >= 0)
-    T_arr = np.where(valid, (-b + np.sqrt(np.maximum(disc, 0))) / (2.0 * a), np.inf)
-    itime_arr = T_arr / n_frames
-
-    # Worst-case channel
-    worst_idx = int(np.argmax(T_arr))
-    T_worst   = float(T_arr[worst_idx])
-    itime_worst = T_worst / n_frames
-
-    return dict(
-        calc_type='itime',
-        wave=wave,
-        itime_arr=itime_arr,
-        itime=itime_worst,
-        n_frames=n_frames,
-        total_time=T_worst,
-        worst_wave=float(wave[worst_idx]),
-        desired_snr=desired_snr,
-        S_arr=S_arr,
-        B_arr=B_arr,
-        aperture_user=aperture_rad_mas,
-        aperture_diff_lim=aperture_params.get('aperture_rad_diff_lim'),
-    )
-
-
 # ── calc_type = 'flux' (IFS) ─────────────────────────────────────────────────
-
 def calc_flux_ifs(
     instrument_params: dict,
     sky_params: dict,

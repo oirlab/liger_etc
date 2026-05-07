@@ -15,6 +15,11 @@ from liger_etc.calc.calc_wrappers import (
 
 def ETCPage():
 
+    import st_yled
+
+    # Initialize styling - set for each app page
+    st_yled.init()
+
     col_title, col_logos = st.columns([3, 1])
     with col_title:
         st.title("Liger Exposure Time Calculator")
@@ -53,7 +58,18 @@ def ETCPage():
     
     st.divider()
 
-    run_calc = st.button("CALCULATE", type="primary", key="run_calculation")
+    #run_calc = st.button("CALCULATE", type="primary", key="run_calculation")
+
+    run_calc = st_yled.button(
+        "Calculate",
+        key="run_calculation",
+        background_color="#5cab68",
+        color="white",
+        font_size="1.6rem",
+        font_weight="bold",
+    )
+
+    #run_calc = st.button("CALCULATE", type="primary", key="run_calculation")
 
     if run_calc:
         is_valid, missing = check_params()

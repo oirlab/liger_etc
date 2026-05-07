@@ -5,6 +5,11 @@ import numpy as np
 
 
 def UserGuidePage():
+
+    import st_yled
+
+    # Initialize styling - set for each app page
+    st_yled.init()
     
     st.markdown(
         "# Liger Exposure Time Calculator User Guide"
