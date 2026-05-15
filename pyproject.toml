@@ -53,6 +53,7 @@ dependencies = [
   "plotly>=6.7.0",
   "photutils",
   "expecto>=0.1.4",
+  "st-styled",
 ]
 
 [project.urls]

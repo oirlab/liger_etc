@@ -206,6 +206,8 @@ def SkyPlot(
 
     wave = sky_data['wave']
 
+    _instrument_mode = instrument_params['_instrument_mode']
+
     # Compute erg/s/cm²/pixel version of sky emission for secondary y-axis
     sky_em_erg = _phot_to_erg(sky_data['sky_em'], wave)
 
@@ -266,14 +268,15 @@ def SkyPlot(
         row=1, col=1
     )
 
+    _unit = 'pixel' if _instrument_mode == 'IMG' else 'spaxel'
     fig.update_yaxes(
-        title_text="<b>ph s⁻¹ m⁻² pixel⁻¹</b>",
+        title_text=f"<b>ph s⁻¹ m⁻² {_unit}⁻¹</b>",
         tickfont=dict(size=14, weight='bold'),
         type="log" if em_log_scale else "linear",
         row=2, col=1, secondary_y=False
     )
     fig.update_yaxes(
-        title_text="<b>erg s⁻¹ cm⁻² pixel⁻¹</b>",
+        title_text=f"<b>erg s⁻¹ cm⁻² {_unit}⁻¹</b>",
         tickfont=dict(size=14, weight='bold'),
         type="log" if em_log_scale else "linear",
         row=2, col=1, secondary_y=True

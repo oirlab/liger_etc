@@ -104,7 +104,7 @@ def ResultsSection(sim: dict):
         elif calc_type == 'flux':
             IFSResults_flux(sim, instrument_params, sky_params, source_params, exposure_params)
 
-    st.divider()
+    #st.divider()
     download_results(
         payload={
             'meta': {},
@@ -244,15 +244,15 @@ def SNRHeatmapPlot(
             y=dl_mas * np.sin(theta),
             mode='lines',
             line=dict(color='hotpink', width=1.5),
-            name=f'2λ/D (R={dl_mas:.0f} mas)',
+            name=f'<b>R=2λ/D={dl_mas:.1f} mas</b>',
             hoverinfo='skip',
         ))
     fig.add_trace(go.Scatter(
         x=aperture_rad_mas * np.cos(theta),
         y=aperture_rad_mas * np.sin(theta),
         mode='lines',
-        line=dict(color='white', width=1.5, dash='dash'),
-        name=f'Aperture (R={aperture_rad_mas:.0f} mas)',
+        line=dict(color='green', width=1.5, dash='dash'),
+        name=f'<b>R={aperture_rad_mas:.1f} mas</b>',
         hoverinfo='skip',
     ))
     # Make the inner plot area square by deriving width from height + margins.
@@ -288,6 +288,7 @@ def SNRHeatmapPlot(
     st.plotly_chart(fig, width='content')
 
 
+@st.fragment
 def ImagerResults_SNR(
     sim: dict,
     instrument_params: dict,
@@ -368,16 +369,16 @@ def ImagerResults_SNR(
         src_peak_rate = float(sim['source_rate'][ypix, xpix])
         sky_rate_pix  = float(sim['sky_em_rate'])
         dark_rate_pix = float(sim['dark_rate'])
+        B_pix = sky_rate_pix + dark_rate_pix
         st.markdown("##### Signal Budget", help="Electron count rates for the source and noise contributions.")
         st.markdown(
             f"| | Rate (e⁻/s) |\n"
             f"|---|---|\n"
             f"| **Source** (peak pixel) | {src_peak_rate:.3f} |\n"
             f"| **Source** (aperture) | {S_ap:.3f} |\n"
-            f"| **Sky** (per pixel) | {sky_rate_pix:.4f} |\n"
-            f"| **Dark** (per pixel) | {dark_rate_pix:.4f} |\n"
+            f"| **Background** (per pixel) | {B_pix:.4f} |\n"
             f"| **Background** (aperture) | {B_ap:.4f} |\n"
-            f"| **Read Noise** (per pixel) | {read_noise:.2f} |"
+            f"| **Read Noise** (per pixel) | {read_noise:.2f} |\n"
             f"| **Read Noise** (aperture) | {(read_noise * np.sqrt(N_pix_ap)):.2f} |"
         )
 
@@ -403,6 +404,7 @@ def ImagerResults_SNR(
         )
 
 
+@st.fragment
 def ImagerResults_flux(
     sim: dict,
     instrument_params: dict,
@@ -414,18 +416,23 @@ def ImagerResults_flux(
     if not _check_sim(sim):
         return
 
-    T = sim['total_time']
     instrument_name = instrument_params.get('instrument_name')
     filter_name     = instrument_params.get('filter_name', 'N/A')
     filter_info     = instrument_params.get('filter_info') or {}
     itime           = float(exposure_params['input_itime'])
     n_frames        = int(exposure_params['input_n_frames'])
-    wave_eff_um = float(filter_info.get('wavecenter', 1.65))
-    # 1 phot/s/m² = (hc/λ) J/phot × 1e3 erg/J/cm² → erg/s/cm²
-    phot_to_erg = 1.986e-16 / wave_eff_um  # erg s cm² / (phot/s/m²)
-    erg_flux_lim = sim['photon_flux_lim'] * phot_to_erg
+    wave_eff_um     = float(filter_info.get('wavecenter', 1.65))
+    phot_to_erg     = 1.986e-16 / wave_eff_um
+    erg_flux_lim    = sim['photon_flux_lim'] * phot_to_erg
+    desired_snr     = sim['desired_snr']
+    T               = sim['total_time']
+    S_lim           = sim['S_ap']
+    B_ap            = sim['B_ap']
+    N_pix_ap        = sim['N_pix_ap']
+    read_noise      = float(sim.get('read_noise', exposure_params.get('read_noise', 0)))
+    RN_var          = N_pix_ap * (read_noise * np.sqrt(n_frames)) ** 2
 
-    col_left, col_right = st.columns([1, 1])
+    col_left, col_right = st.columns([1, 2])
 
     with col_left:
         st.markdown("#### Summary")
@@ -437,14 +444,12 @@ def ImagerResults_flux(
             st.markdown("**Filter:** " + filter_name + f" ({filter_info.get('wavemin', 0):.3f}–{filter_info.get('wavemax', 0):.3f} μm)")
         st.markdown(f"**Itime:** {itime:.1f} s × {n_frames} = {itime * n_frames:.1f} s")
 
-    with col_right:
+        st.divider()
         st.markdown("#### Limiting Sensitivity")
-        st.markdown(
-            f"**Desired SNR ≥ {sim['desired_snr']:.1f} in aperture R = {sim['aperture_user']:.1f} mas**"
-        )
+        st.markdown(f"**Desired SNR ≥ {desired_snr:.1f}, aperture R = {sim['aperture_user']:.1f} mas**")
         st.markdown(
             f"Limiting Magnitude (Vega)",
-            help=f"The limiting magnitude to achieve SNR ≥ {sim['desired_snr']:.1f} in the specified aperture and total integration time."
+            help=f"The limiting magnitude to achieve SNR ≥ {desired_snr:.1f} in the specified aperture and total integration time."
         )
         st.markdown(
             f"{sci_html(val=sim['mag_lim'], precision=2, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
@@ -452,7 +457,7 @@ def ImagerResults_flux(
         )
         st.markdown(
             f"Limiting Flux",
-            help=f"The minimum integrated flux to achieve SNR ≥ {sim['desired_snr']:.1f} in the specified aperture and total integration time."
+            help=f"The minimum integrated flux to achieve SNR ≥ {desired_snr:.1f} in the specified aperture and total integration time."
         )
         st.markdown(
             f"{sci_html(val=sim['photon_flux_lim'], unit_str='ph s^-1 m^-2', precision=3, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
@@ -462,6 +467,73 @@ def ImagerResults_flux(
             f"{sci_html(val=erg_flux_lim, unit_str='erg s^-1 cm^-2', precision=3, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
             unsafe_allow_html=True,
         )
+
+    with col_right:
+        # SNR vs source flux plot
+        F_lim = sim['photon_flux_lim']
+        F_arr = np.logspace(np.log10(F_lim / 100), np.log10(F_lim * 10), 300)
+        # Source aperture signal rate scales linearly with flux
+        S_arr = S_lim * (F_arr / F_lim)
+        snr_arr = S_arr * T / np.sqrt((S_arr + B_ap) * T + RN_var)
+        F_erg_arr = F_arr * phot_to_erg
+        F_erg_lim = F_lim * phot_to_erg
+
+        fig = go.Figure()
+        # Visible curve on primary x-axis (phot units)
+        fig.add_trace(go.Scatter(
+            x=F_arr, y=snr_arr,
+            mode='lines',
+            line=dict(color='royalblue', width=2),
+            name='SNR',
+            xaxis='x',
+        ))
+        # Marker at limiting flux
+        fig.add_trace(go.Scatter(
+            x=[F_lim], y=[desired_snr],
+            mode='markers',
+            marker=dict(color='crimson', size=12, symbol='circle'),
+            name=f'Limiting flux (SNR={desired_snr:.1f})',
+            xaxis='x',
+        ))
+        # Invisible trace on secondary x-axis (erg units) — drives xaxis2 range
+        fig.add_trace(go.Scatter(
+            x=F_erg_arr, y=snr_arr,
+            mode='lines',
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo='skip',
+            xaxis='x2',
+        ))
+        fig.update_layout(
+            title=dict(
+                text=(
+                    f'<b>SNR vs Source Flux</b>'
+                    f'<br><sup>T = {T:.1f} s, aperture R = {sim["aperture_user"]:.1f} mas</sup>'
+                ),
+                font=dict(size=16),
+            ),
+            xaxis=dict(
+                title=dict(text='<b>Flux (ph s⁻¹ m⁻²)</b>', font=dict(size=13)),
+                type='log',
+                side='bottom',
+                tickfont=dict(size=12, weight='bold'),
+            ),
+            xaxis2=dict(
+                title=dict(text='<b>Flux (erg s⁻¹ cm⁻²)</b>', font=dict(size=13)),
+                type='log',
+                overlaying='x',
+                side='top',
+                tickfont=dict(size=12, weight='bold'),
+            ),
+            yaxis=dict(
+                title=dict(text='<b>Aperture SNR</b>', font=dict(size=13)),
+                tickfont=dict(size=12, weight='bold'),
+            ),
+            template='plotly_white',
+            height=420,
+            legend=dict(orientation='h', yanchor='bottom', y=1.08, xanchor='right', x=1),
+        )
+        st.plotly_chart(fig, width='stretch')
 
 
 # ── IFS plot helpers ─────────────────────────────────────────────────────────
@@ -613,6 +685,7 @@ def _ifs_summary_col(
             st.metric(label, value, help=_help)
 
 
+@st.fragment
 def IFSResults_SNR(
     sim: dict,
     instrument_params: dict,
@@ -725,6 +798,7 @@ def IFSResults_SNR(
         )
 
 
+@st.fragment
 def IFSResults_flux(
     sim: dict,
     instrument_params: dict,
@@ -743,7 +817,17 @@ def IFSResults_flux(
     desired_snr      = sim['desired_snr']
     aperture_rad_mas = sim['aperture_user']
 
-    col_left, col_right = st.columns([1, 2])
+    finite_mask = np.isfinite(flux_lim_density)
+    # Per-channel conversion: hc/λ, units phot/s/m²/μm → erg/s/cm²/μm
+    flux_lim_erg = flux_lim_density * (1.986e-16 / wave)
+    # Convert erg/s/cm²/μm → mJy: F_ν[mJy] = F_λ × λ²[μm] / c[μm/s] × 1e26
+    flux_lim_mjy = flux_lim_erg * (wave ** 2 / 3e14) * 1e26
+    # Bandpass-integrated limiting flux (trapz over finite channels)
+    flux_int_phot = float(np.trapezoid(flux_lim_density[finite_mask], wave[finite_mask]))
+    flux_int_erg  = float(np.trapezoid(flux_lim_erg[finite_mask],     wave[finite_mask]))
+    flux_int_mjy_um = float(np.trapezoid(flux_lim_mjy[finite_mask],   wave[finite_mask]))
+
+    col_left, col_right = st.columns([1.2, 2])
 
     with col_left:
         _ifs_summary_col(sim, instrument_params, source_params, exposure_params)
@@ -754,46 +838,47 @@ def IFSResults_flux(
         st.markdown(
             f"**Desired SNR ≥ {desired_snr:.1f} per spectral bin in aperture R = {aperture_rad_mas:.1f} mas**"
         )
-        # st.markdown(
-        #     f"For **{T:.1f} s** total integration, SNR ≥ {desired_snr:.1f} "
-        #     f"per spectral bin (R = {aperture_rad_mas:.1f} mas):"
-        # )
         st.markdown(
-            f"Limiting Magnitude (Vega, continuum)<br>{sci_html(val=mag_lim, precision=2, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
+            f"Limiting Magnitude (Vega)<br>{sci_html(val=mag_lim, precision=2, font_size='2.2rem', sci_thresh=(1e-4, 1e4))}",
             unsafe_allow_html=True,
-        )
-        st.markdown(
-            "Limiting Flux",
-            help="The minimum integrated flux to achieve the specified SNR per spectral bin in the given aperture and total integration time."
-        )
-        st.markdown(
-            f"{sci_html(val=sim['photon_flux_lim'], unit_str='ph s^-1 m^-2', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            f"{sci_html(val=erg_flux_lim, unit_str='erg s^-1 cm^-2', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
-            unsafe_allow_html=True,
+            help="The limiting magnitude to achieve the specified SNR per spectral bin in the given aperture and total integration time."
         )
 
         flux_lim_density_med = float(np.nanmedian(flux_lim_density))
-        erg_flux_lim_density_med = flux_lim_density_med * (1.986e-16 / wave_eff_um)
+        erg_flux_lim_density_med = float(np.nanmedian(flux_lim_erg))
+        mjy_flux_lim_density_med = float(np.nanmedian(flux_lim_mjy))
         st.markdown(
             "Limiting Flux Density (median)",
             help="Median limiting flux density per spectral bin over the bandpass, to achieve the specified SNR per spectral bin in the given aperture and total integration time."
         )
         st.markdown(
-            f"{sci_html(val=flux_lim_density_med, unit_str='ph s^-1 m^-2 μm^-1', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
+            f"{sci_html(val=flux_lim_density_med, unit_str='ph s^-1 m^-2 μm^-1', precision=3, font_size='1.6rem', sci_thresh=(1e-4, 1e4))}",
             unsafe_allow_html=True,
         )
         st.markdown(
-            f"{sci_html(val=erg_flux_lim_density_med, unit_str='erg s^-1 cm^-2 μm^-1', precision=3, font_size='2.0rem', sci_thresh=(1e-4, 1e4))}",
+            f"{sci_html(val=erg_flux_lim_density_med, unit_str='erg s^-1 cm^-2 μm^-1', precision=3, font_size='1.6rem', sci_thresh=(1e-4, 1e4))}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"{sci_html(val=mjy_flux_lim_density_med, unit_str='mJy', precision=3, font_size='1.6rem', sci_thresh=(1e-4, 1e4))}",
             unsafe_allow_html=True,
         )
 
     with col_right:
-        finite_mask = np.isfinite(flux_lim_density)
-        # Per-channel conversion: hc/λ, units phot/s/m²/μm → erg/s/cm²/μm
-        flux_lim_erg = flux_lim_density * (1.986e-16 / wave)
+        right_unit = st.radio(
+            "Flux density units",
+            options=["erg s⁻¹ cm⁻² μm⁻¹", "mJy"],
+            horizontal=True,
+            key="ifs_flux_right_unit",
+            #label_visibility="collapsed",
+        )
+        if right_unit == "mJy":
+            secondary_y = flux_lim_mjy
+            secondary_title = '<b>Flux Density (mJy)</b>'
+        else:
+            secondary_y = flux_lim_erg
+            secondary_title = '<b>Flux Density (erg s⁻¹ cm⁻² μm⁻¹)</b>'
+
         fig = go.Figure()
         # Visible trace on left axis (phot units)
         fig.add_trace(go.Scatter(
@@ -803,9 +888,9 @@ def IFSResults_flux(
             name='Limiting flux density',
             yaxis='y1',
         ))
-        # Invisible trace on right axis (erg units) — drives yaxis2 range only
+        # Invisible trace on right axis — drives yaxis2 range only
         fig.add_trace(go.Scatter(
-            x=wave[finite_mask], y=flux_lim_erg[finite_mask],
+            x=wave[finite_mask], y=secondary_y[finite_mask],
             mode='lines',
             line=dict(width=0),
             showlegend=False,
@@ -823,12 +908,16 @@ def IFSResults_flux(
             xaxis=dict(title=dict(text='<b>Wavelength (μm)</b>', font=dict(size=13))),
             yaxis=dict(
                 title=dict(text='<b>Flux Density (ph s⁻¹ m⁻² μm⁻¹)</b>', font=dict(size=13)),
+                #type='log',
                 side='left',
+                tickfont=dict(size=12, weight='bold'),
             ),
             yaxis2=dict(
-                title=dict(text='<b>Flux Density (erg s⁻¹ cm⁻² μm⁻¹)</b>', font=dict(size=13)),
+                title=dict(text=secondary_title, font=dict(size=13)),
+                #type='log',
                 overlaying='y',
                 side='right',
+                tickfont=dict(size=12, weight='bold'),
             ),
             template='plotly_white',
             height=400,

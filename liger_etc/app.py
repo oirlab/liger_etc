@@ -28,6 +28,8 @@ st.set_page_config(
     layout="wide",
 )
 
+
+
 def etc_page():
     from pages.etc import ETCPage
     ETCPage()

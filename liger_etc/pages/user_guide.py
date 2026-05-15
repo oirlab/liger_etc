@@ -17,7 +17,7 @@ def UserGuidePage():
     
     st.markdown(
         "This page provides a user guide to running the Liger Exposure Time Calculator."
-        )
+    )
 
     st.markdown("### About")
 

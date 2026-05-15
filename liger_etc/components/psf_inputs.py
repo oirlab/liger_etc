@@ -162,7 +162,7 @@ def PSFInputs():
                 min_value=0.1,
                 max_value=200.0,
                 value=40.0,
-                step=0.5,
+                step=0.1,
                 format='%.2f',
                 key='psf_fried_param',
             )

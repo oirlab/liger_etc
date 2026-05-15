@@ -323,7 +323,10 @@ def calc_flux_imager(
         n_frames=n_frames,
         total_time=T,
         desired_snr=desired_snr,
+        S_ap=S_ap,
         B_ap=B_ap,
+        N_pix_ap=N_pix_ap,
+        read_noise=read_noise,
         aperture_user=aperture_rad_mas,
         aperture_diff_lim=aperture_params.get('aperture_rad_diff_lim'),
     )

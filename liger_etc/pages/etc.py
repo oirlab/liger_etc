@@ -20,19 +20,13 @@ def ETCPage():
     # Initialize styling - set for each app page
     st_yled.init()
 
-    col_title, col_logos = st.columns([3, 1])
+    col_title, col_logos = st.columns([4, 1])
     with col_title:
         st.title("Liger Exposure Time Calculator")
     with col_logos:
-        _cols = st.columns([1, 1, 1, 1])
-        with _cols[0]:
-            st.image("liger_etc/static/liger_logo.png", width=120)
-        with _cols[1]:
-            st.image("liger_etc/static/oirlab_logo.png", width=120)
-        with _cols[2]:
-            st.image("liger_etc/static/keck_logo.png", width=120)
-        with _cols[3]:
-            st.image("liger_etc/static/mulab_logo_short.png", width=120)
+        #_cols = st.columns([1, 1, 1, 1])
+        #with _cols[0]:
+        st.image("liger_etc/static/liger_logo.png", width='content')
 
     InstrumentInputs()
     st.divider()
@@ -69,8 +63,6 @@ def ETCPage():
         font_weight="bold",
     )
 
-    #run_calc = st.button("CALCULATE", type="primary", key="run_calculation")
-
     if run_calc:
         is_valid, missing = check_params()
         if not is_valid:
@@ -89,6 +81,17 @@ def ETCPage():
 
     if sim is not None:
         ResultsSection(sim)
+
+    st.divider()
+    _cols = st.columns([1, 1, 1, 1])
+    with _cols[0]:
+        st.image("liger_etc/static/liger_logo.png", width='content')
+    with _cols[1]:
+        st.image("liger_etc/static/oirlab_logo.png", width='content')
+    with _cols[2]:
+        st.image("liger_etc/static/keck_logo.png", width='content')
+    with _cols[3]:
+        st.image("liger_etc/static/mulab_logo_short.png", width='content')
 
 def check_params():
     

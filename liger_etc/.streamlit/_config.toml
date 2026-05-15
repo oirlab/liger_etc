@@ -1,0 +1,10 @@
+# [theme]
+# base = "light"
+
+# primaryColor = "#d93765"               # Love
+# backgroundColor = "#FAF4ED"            # Base
+# #secondaryBackgroundColor = "#e5ddd4"   # Overlay
+# secondaryBackgroundColor = "#EFF8FC"
+# textColor = "#423f58"                  # Text
+
+# font = "sans serif"

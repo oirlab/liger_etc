@@ -18,23 +18,22 @@ def ApertureInputs():
     st.markdown("### Aperture Config")
 
     instrument_name = instrument_params.get('instrument_name')
-    #inst_mode = instrument_params.get('_instrument_mode')
-    #ifs_mode = instrument_params.get('ifs_mode')
-    #filter_name = instrument_params.get("filter_name")
     plate_scale = instrument_params.get('plate_scale')
     filter_info = instrument_params.get('filter_info')
     if plate_scale is not None and filter_info is not None:
         wavecen = filter_info.get('wavecenter')
         diffrac_lim = get_diffrac_limit(instrument_name, wavecen)
-        st.markdown(f"**Diffraction limit (2λ/D)**: {np.round(diffrac_lim, decimals=1)} mas", help="Aperture radius for a perfect airy disk to encircle ~90% of total flux.")
+        st.markdown(
+            rf"$2\lambda/D = {np.round(diffrac_lim, 1)}\,\mathrm{{mas}}$",
+            help="Aperture radius for a perfect airy disk to encircle ~90% of total flux."
+        )
     else:
         diffrac_lim = get_diffrac_limit(instrument_name, 1.5)
-        st.text("Diffraction limit R = 2λ/D = N/A (Select instrument and filter)")
+        st.markdown(f"**$R=2λ/D$: N/A**", help="Aperture radius for a perfect airy disk to encircle ~90% of total flux.")
 
     aperture_rad = st.number_input(
         label='**Aperture Radius (mas)**',
         min_value=0.0,
-        #max_value=None,
         value=np.round(diffrac_lim, decimals=1),
         step=0.1,
         key='aperture_rad',
@@ -42,8 +41,9 @@ def ApertureInputs():
         placeholder=np.round(diffrac_lim, decimals=1)
     )
 
-    num_pix = aperture_rad / (plate_scale * 1E3)
-    st.markdown(f"**$N_{{pix}}$ = {np.round(num_pix, decimals=2)}**", help="Number of pixels in user aperture")
+    if plate_scale is not None and aperture_rad is not None:
+        num_pix = np.pi * aperture_rad ** 2 / (plate_scale * 1e3) ** 2
+        st.markdown(f"**$N_{{pix}}$ = {np.round(num_pix, decimals=2)}**", help="Number of pixels in user aperture")
 
 def _make_sersic_kernel(shape: tuple, re_pix: float, n: float) -> np.ndarray:
     """Normalized 2D Sersic surface brightness profile as a convolution kernel."""
@@ -212,28 +212,17 @@ def PSFAperturePlots():
         zmin=-4, zmax=0,
         hovertemplate='Δx: %{x:.1f} mas<br>Δy: %{y:.1f} mas<br>log₁₀: %{z:.2f}<extra></extra>',
     ))
-    #x0 = (nx - 1) / 2 * plate_scale * 1000
-    #y0 = (ny - 1) / 2 * plate_scale * 1000
-    #x0 = 0.5 * ps_mas if nx % 2 == 1 else 0.0
-    #y0 = 0.5 * ps_mas if ny % 2 == 1 else 0.0
-    #breakpoint()
-    y0 = 0.0
-    x0 = 0.0
     fig_psf.add_trace(go.Scatter(
-        #x=diffrac_lim_mas * np.cos(theta),
-        #y=diffrac_lim_mas * np.sin(theta),
-        x=x0 + diffrac_lim_mas * np.cos(theta),
-        y=y0 + diffrac_lim_mas * np.sin(theta),
+        x=diffrac_lim_mas * np.cos(theta),
+        y=diffrac_lim_mas * np.sin(theta),
         mode='lines',
         line=dict(color='hotpink', width=1.5),
         name=f'2λ/D ({diffrac_lim_mas:.1f} mas)',
         hoverinfo='skip',
     ))
     fig_psf.add_trace(go.Scatter(
-        #x=aperture_rad_mas * np.cos(theta),
-        #y=aperture_rad_mas * np.sin(theta),
-        x=x0 + aperture_rad_mas * np.cos(theta),
-        y=y0 + aperture_rad_mas * np.sin(theta),
+        x=aperture_rad_mas * np.cos(theta),
+        y=aperture_rad_mas * np.sin(theta),
         mode='lines',
         line=dict(color='green', width=1.5, dash='dash'),
         name=f'Aperture ({aperture_rad_mas:.1f} mas)',
@@ -268,7 +257,6 @@ def PSFAperturePlots():
 def get_aperture_params():
     instrument_params = get_instrument_params()
     instrument_name = instrument_params.get('instrument_name')
-    #wavecen = instrument_params.get('filter_info', {}).get('wavecenter')
     filter_info = instrument_params.get('filter_info')
     if filter_info is not None:
         aperture_rad_diff_lim = get_diffrac_limit(
