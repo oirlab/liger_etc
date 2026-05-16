@@ -24,7 +24,7 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="Liger and Iris Exposure Time Calculator",
+    page_title="Liger Exposure Time Calculator",
     layout="wide",
 )
 
