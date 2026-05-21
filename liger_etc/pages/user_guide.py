@@ -28,7 +28,8 @@ def UserGuidePage():
     - Bryson Cale (UCSD)
     - Shelley Wright (UCSD)
     - Sanchit Sabhlok (UCSD)
-    - KAPA Group (UC Berkeley)
+    - [Liger Instrument Group](https://oirlab.ucsd.edu/LIGER.html)
+    - [KAPA Group (UC Berkeley)](https://keckao.github.io/kapa/)
     """)
 
     st.markdown("##### The ETC uses the Liger IRIS Science Data Simulator:")
